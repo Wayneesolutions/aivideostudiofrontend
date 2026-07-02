@@ -80,7 +80,7 @@ export default function Projects() {
           </div>
 
           <button
-            onClick={() => navigate("/studio")}
+            onClick={() => navigate(`/preview?job_id=${job.job_id}`)}
             className="flex items-center gap-3 bg-violet-600 hover:bg-violet-700 px-7 py-4 rounded-2xl"
           >
 
@@ -152,7 +152,7 @@ export default function Projects() {
                 <p className="text-gray-400 mt-3">Last Updated • {toRelativeDate(job.updated_at || job.created_at)}</p>
 
                 <button
-                  onClick={() => navigate("/studio")}
+                  onClick={() => navigate(`/preview?job_id=${job.job_id}`)}
                   className="mt-8 w-full bg-violet-600 hover:bg-violet-700 py-3 rounded-xl flex items-center justify-center gap-2"
                 >
                   <PlayCircle size={18} />

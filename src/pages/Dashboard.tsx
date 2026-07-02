@@ -93,7 +93,7 @@ export default function Dashboard() {
           </div>
 
           <button
-            onClick={() => navigate("/studio")}
+            onClick={() => navigate(`/preview?job_id=${project.id}`)}
             className="flex items-center gap-3 bg-violet-600 hover:bg-violet-700 px-7 py-4 rounded-2xl transition"
           >
             <Plus />
@@ -251,7 +251,7 @@ export default function Dashboard() {
                   </span>
 
                   <button
-                    onClick={() => navigate("/studio")}
+                    onClick={() => navigate(`/preview?job_id=${project.id}`)}
                     className="bg-violet-600 hover:bg-violet-700 px-5 py-2 rounded-xl"
                   >
                     Continue
@@ -342,7 +342,7 @@ export default function Dashboard() {
             </p>
 
             <button
-              onClick={() => navigate("/studio")}
+              onClick={() => navigate(`/preview?job_id=${project.id}`)}
               className="mt-10 bg-white text-black px-6 py-3 rounded-xl font-semibold"
             >
 

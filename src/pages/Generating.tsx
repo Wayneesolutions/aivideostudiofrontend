@@ -44,7 +44,7 @@ export default function Generating() {
 
   useEffect(() => {
     if (!jobId) {
-      // No job ID — fallback to the old 5-second fake timer
+      // Fallback to the old 5-second fake timer
       const timer = setTimeout(() => navigate("/preview"), 5000);
       return () => clearTimeout(timer);
     }

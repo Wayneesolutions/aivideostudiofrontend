@@ -1,5 +1,6 @@
 import Layout from "../layouts/Layout";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Film, Sparkles, Package, UtensilsCrossed, Home, Smartphone,
   CheckCircle, Image, Video, Download, Play,
@@ -9,6 +10,7 @@ import { createJob, getFirstClientId, pollUntil, postMessage } from "../api/jobs
 import type { Shot } from "../api/jobs";
 
 export default function SmartVideo() {
+  const navigate = useNavigate();
 
   const [prompt, setPrompt] = useState("");
   const [videoType, setVideoType] = useState("Advertisement");
@@ -239,15 +241,15 @@ export default function SmartVideo() {
                     {assemblingVideo ? "Assembling..." : videoReady ? "Assembled" : "Assemble Video"}
                   </button>
 
-                  <a href={finalUrls?.["9:16"] || "#"} target="_blank" rel="noreferrer"
+                  <button onClick={() => navigate('/preview?job_id=' + jobId)}
                     className={`text-center bg-[#060816] border border-white/10 rounded-xl py-3 font-semibold flex items-center justify-center gap-2 ${!videoReady ? "opacity-40 pointer-events-none" : "hover:border-violet-500"}`}>
                     <Play size={16} /> Preview
-                  </a>
+                  </button>
 
-                  <a href={finalUrls?.["16:9"] || "#"} download
+                  <button onClick={() => navigate('/preview?job_id=' + jobId)}
                     className={`text-center bg-[#060816] border border-white/10 rounded-xl py-3 font-semibold flex items-center justify-center gap-2 ${!videoReady ? "opacity-40 pointer-events-none" : "hover:border-violet-500"}`}>
                     <Download size={16} /> Download
-                  </a>
+                  </button>
                 </div>
 
                 <div className="mt-8 bg-[#060816] border border-white/10 rounded-2xl p-5">

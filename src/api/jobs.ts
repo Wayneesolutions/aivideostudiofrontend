@@ -82,8 +82,8 @@ export async function getFirstClientId(): Promise<number> {
 export async function pollUntil(
   jobId: string,
   targetStates: string[],
-  intervalMs = 1500,
-  timeoutMs = 60000
+  intervalMs = 2000,
+  timeoutMs = 600000
 ): Promise<JobDetail> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
