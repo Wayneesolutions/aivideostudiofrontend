@@ -19,7 +19,6 @@ export default function SmartVideo() {
 
   const [jobId, setJobId] = useState<string | null>(null);
   const [shots, setShots] = useState<Shot[]>([]);
-  const [finalUrls, setFinalUrls] = useState<Record<string, string> | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [storyboardReady, setStoryboardReady] = useState(false);
@@ -42,7 +41,7 @@ export default function SmartVideo() {
         client_id: clientId,
         name: prompt.slice(0, 60),
         brief_text: `${prompt} | Type: ${videoType} | Images: ${imageCount} | Duration: ${duration}`,
-        mode: "economy",
+        mode: "standard",
         job_type: "smart_video",
       });
       setJobId(job.job_id);
@@ -97,7 +96,6 @@ export default function SmartVideo() {
         setError("Assembly failed. Please try again.");
         return;
       }
-      setFinalUrls(finalDetail.final_urls);
       setVideoReady(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -241,12 +239,16 @@ export default function SmartVideo() {
                     {assemblingVideo ? "Assembling..." : videoReady ? "Assembled" : "Assemble Video"}
                   </button>
 
-                  <button onClick={() => navigate('/preview?job_id=' + jobId)}
+                  <button
+                    onClick={() => navigate(`/preview?job_id=${jobId}`)}
+                    disabled={!videoReady}
                     className={`text-center bg-[#060816] border border-white/10 rounded-xl py-3 font-semibold flex items-center justify-center gap-2 ${!videoReady ? "opacity-40 pointer-events-none" : "hover:border-violet-500"}`}>
                     <Play size={16} /> Preview
                   </button>
 
-                  <button onClick={() => navigate('/preview?job_id=' + jobId)}
+                  <button
+                    onClick={() => navigate(`/preview?job_id=${jobId}`)}
+                    disabled={!videoReady}
                     className={`text-center bg-[#060816] border border-white/10 rounded-xl py-3 font-semibold flex items-center justify-center gap-2 ${!videoReady ? "opacity-40 pointer-events-none" : "hover:border-violet-500"}`}>
                     <Download size={16} /> Download
                   </button>

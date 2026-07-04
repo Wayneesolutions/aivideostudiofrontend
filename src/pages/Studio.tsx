@@ -20,6 +20,14 @@ export default function Studio() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const durationToShots: Record<string, number> = {
+    "5 Seconds": 1,
+    "10 Seconds": 2,
+    "15 Seconds": 3,
+    "20 Seconds": 4,
+    "30 Seconds": 6,
+  };
+
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       setError("Please describe your video before generating.");
@@ -31,13 +39,15 @@ export default function Studio() {
 
     try {
       const clientId = await getFirstClientId();
+      const num_shots = durationToShots[duration] || 4;
 
       const job = await createJob({
         client_id: clientId,
         name: prompt.slice(0, 60) || "New Video Project",
         brief_text: `${prompt} | Style: ${style} | Duration: ${duration}`,
-        mode: "economy",
+        mode: "standard",
         job_type: "studio",
+        num_shots,
       });
 
       navigate(`/quality?job_id=${job.job_id}`);
@@ -172,9 +182,11 @@ export default function Studio() {
                   className="mt-2 w-full bg-[#060816] border border-white/10 rounded-xl p-4"
                 >
 
+                  <option>5 Seconds</option>
+                  <option>10 Seconds</option>
                   <option>15 Seconds</option>
+                  <option>20 Seconds</option>
                   <option>30 Seconds</option>
-                  <option>60 Seconds</option>
 
                 </select>
 

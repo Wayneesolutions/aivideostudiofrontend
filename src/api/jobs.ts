@@ -42,6 +42,7 @@ export interface CreateJobPayload {
   brief_text: string;
   mode: string;
   job_type: string;
+  num_shots?: number;
 }
 
 export interface CreateJobResponse {
@@ -68,6 +69,12 @@ export async function createJob(payload: CreateJobPayload): Promise<CreateJobRes
 
 export async function postMessage(jobId: string, message: string): Promise<void> {
   await api.post(`/api/v1/jobs/${jobId}/message`, { message });
+}
+
+export async function regenerateShot(jobId: string, shotIdx: number, modifier: string = ""): Promise<void> {
+  await api.post(`/api/v1/jobs/${jobId}/message`, {
+    message: `shot ${shotIdx + 1} ${modifier}`.trim()
+  });
 }
 
 export async function getFirstClientId(): Promise<number> {
