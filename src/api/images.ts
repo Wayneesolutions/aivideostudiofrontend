@@ -6,6 +6,7 @@ export interface GenerateImagePayload {
   style: string;
   ratio: string;
   resolution: string;
+  reference_image_url?: string;
 }
 
 export interface GeneratedImage {

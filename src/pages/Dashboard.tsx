@@ -40,6 +40,7 @@ export default function Dashboard() {
   const [videosGenerated, setVideosGenerated] = useState(0);
   const [aiStatus, setAiStatus] = useState("Online");
   const [projects, setProjects] = useState<RecentProject[]>([]);
+  const [recentActivity, setRecentActivity] = useState<{id: number; description: string; created_at: string}[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export default function Dashboard() {
         setVideosGenerated(stats.videos_generated);
         setAiStatus(stats.ai_services_status);
         setProjects(stats.recent_projects);
+        setRecentActivity(stats.recent_activity || []);
       })
       .catch((err) => {
         console.error("Failed to load dashboard stats:", err);
@@ -93,7 +95,7 @@ export default function Dashboard() {
           </div>
 
           <button
-            onClick={() => navigate(`/preview?job_id=${project.id}`)}
+            onClick={() => navigate("/studio")}
             className="flex items-center gap-3 bg-violet-600 hover:bg-violet-700 px-7 py-4 rounded-2xl transition"
           >
             <Plus />
@@ -281,15 +283,14 @@ export default function Dashboard() {
 
             <div className="space-y-5 mt-6">
 
-              {[
-                "Generated Product Launch Video",
-                "Uploaded Brand Assets",
-                "Created New Project",
-                "Started AI Rendering",
-              ].map((item) => (
+              {!loading && recentActivity.length === 0 && (
+                <p className="text-gray-500 text-sm">No activity yet.</p>
+              )}
+
+              {recentActivity.map((item) => (
 
                 <div
-                  key={item}
+                  key={item.id}
                   className="flex items-center gap-4"
                 >
 
@@ -306,13 +307,13 @@ export default function Dashboard() {
 
                     <h3 className="font-medium">
 
-                      {item}
+                      {item.description}
 
                     </h3>
 
                     <p className="text-sm text-gray-500">
 
-                      Just now
+                      {toRelativeDate(item.created_at)}
 
                     </p>
 
@@ -342,7 +343,7 @@ export default function Dashboard() {
             </p>
 
             <button
-              onClick={() => navigate(`/preview?job_id=${project.id}`)}
+              onClick={() => navigate("/studio")}
               className="mt-10 bg-white text-black px-6 py-3 rounded-xl font-semibold"
             >
 
