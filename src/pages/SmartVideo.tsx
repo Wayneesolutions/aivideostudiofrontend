@@ -1,21 +1,37 @@
 import Layout from "../layouts/Layout";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Film, Sparkles, Package, UtensilsCrossed, Home, Smartphone,
   CheckCircle, Image, Video, Download, Play,
-  ListChecks, Layers, Clapperboard
+  ListChecks, Layers, Clapperboard, Upload, X
 } from "lucide-react";
 import { createJob, getFirstClientId, pollUntil, postMessage } from "../api/jobs";
+import api from "../api/api";
 import type { Shot } from "../api/jobs";
 
 export default function SmartVideo() {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [prompt, setPrompt] = useState("");
   const [videoType, setVideoType] = useState("Advertisement");
   const [imageCount, setImageCount] = useState("5");
   const [duration, setDuration] = useState("30 Seconds");
+  const [referencePreview, setReferencePreview] = useState<string | null>(null);
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setReferencePreview(dataUrl);
+      setReferenceImage(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const [jobId, setJobId] = useState<string | null>(null);
   const [shots, setShots] = useState<Shot[]>([]);
@@ -37,10 +53,30 @@ export default function SmartVideo() {
     setLoading(true);
     try {
       const clientId = await getFirstClientId();
+
+      // Analyze reference image with GPT vision if provided
+      let imageDescription = "";
+      if (referenceImage) {
+        try {
+          const res = await api.post("/api/v1/images/analyze", {
+            image_data_url: referenceImage,
+          });
+          imageDescription = res.data.description || "";
+        } catch (e) {
+          console.warn("Vision analysis failed");
+        }
+      }
+
+      const briefText = imageDescription
+        ? `${prompt} | Type: ${videoType} | Images: ${imageCount} | Duration: ${duration} | Product details from reference image: ${imageDescription}`
+        : referenceImage
+        ? `${prompt} | Type: ${videoType} | Images: ${imageCount} | Duration: ${duration} | Reference image provided by client`
+        : `${prompt} | Type: ${videoType} | Images: ${imageCount} | Duration: ${duration}`;
+
       const job = await createJob({
         client_id: clientId,
         name: prompt.slice(0, 60),
-        brief_text: `${prompt} | Type: ${videoType} | Images: ${imageCount} | Duration: ${duration}`,
+        brief_text: briefText,
         mode: "standard",
         job_type: "smart_video",
       });
@@ -120,6 +156,28 @@ export default function SmartVideo() {
           <div className="bg-[#101522] rounded-3xl border border-white/10 p-8">
 
             <h2 className="text-2xl font-semibold mb-6">Video Settings</h2>
+
+            {/* Reference Image Upload */}
+            <label className="font-medium block mb-3">Reference Image / Product Photo (optional)</label>
+            {referencePreview ? (
+              <div className="relative w-full h-36 rounded-xl overflow-hidden border border-violet-500 mb-6">
+                <img src={referencePreview} alt="Reference" className="w-full h-full object-cover" />
+                <button onClick={() => { setReferencePreview(null); setReferenceImage(null); }}
+                  className="absolute top-2 right-2 bg-black/70 hover:bg-red-500 rounded-full p-1 transition">
+                  <X size={14} />
+                </button>
+                <div className="absolute bottom-2 left-2 bg-black/60 px-3 py-1 rounded-full text-xs text-green-400">
+                  Reference added
+                </div>
+              </div>
+            ) : (
+              <div onClick={() => fileInputRef.current?.click()}
+                className="w-full h-24 border-2 border-dashed border-white/20 rounded-xl flex items-center justify-center gap-3 hover:border-violet-500 transition text-gray-400 hover:text-white cursor-pointer mb-6">
+                <Upload size={20} />
+                Upload product photo or logo
+              </div>
+            )}
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
             <label className="font-medium">Prompt</label>
             <textarea
