@@ -22,6 +22,11 @@ export default function ImageStudio() {
   const [resolution, setResolution] = useState("1024 × 1024");
   const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
   const [referencePreview, setReferencePreview] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [overlayText, setOverlayText] = useState("");
+  const [overlayFont, setOverlayFont] = useState("Dancing Script");
+  const [overlayColor, setOverlayColor] = useState("#FFFFFF");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -30,6 +35,7 @@ export default function ImageStudio() {
   const [currentIdx, setCurrentIdx] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const currentImage = gallery[currentIdx] || null;
 
@@ -45,6 +51,18 @@ export default function ImageStudio() {
     reader.readAsDataURL(file);
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setLogoPreview(dataUrl);
+      setLogoUrl(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleGenerate = async () => {
     if (prompt.trim() === "") { setError("Please enter a prompt before generating."); return; }
     setError(""); setLoading(true);
@@ -56,6 +74,11 @@ export default function ImageStudio() {
         ratio,
         resolution: resolution.replace(" × ", "x"),
         reference_image_url: referenceImageUrl || undefined,
+        logo_url: logoUrl || undefined,
+        logo_position: logoUrl ? "top-right" : undefined,
+        overlay_text: overlayText || undefined,
+        overlay_font: overlayText ? overlayFont : undefined,
+        overlay_color: overlayText ? overlayColor : undefined,
       });
       const newImage: GeneratedImage = {
         url: result.image_url,
@@ -125,6 +148,88 @@ export default function ImageStudio() {
                 className="hidden"
                 onChange={handleReferenceUpload}
               />
+            </div>
+
+            {/* Logo Upload */}
+            <div className="mb-6">
+              <label className="text-gray-300 font-medium block mb-3">
+                Brand Logo (optional — GPT places it automatically)
+              </label>
+              {logoPreview ? (
+                <div className="relative w-full h-20 rounded-xl border border-green-500 flex items-center justify-center bg-[#060816]">
+                  <img src={logoPreview} alt="Logo" className="h-full object-contain p-2" />
+                  <button onClick={() => { setLogoPreview(null); setLogoUrl(null); }}
+                    className="absolute top-2 right-2 bg-black/70 rounded-full p-1 hover:bg-red-500/70">
+                    <X size={14} />
+                  </button>
+                  <div className="absolute bottom-1 left-2 text-xs text-green-400">
+                    ✓ Logo will be placed intelligently by AI
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => logoInputRef.current?.click()}
+                  className="w-full h-16 border-2 border-dashed border-green-500/40 rounded-xl flex items-center justify-center gap-3 hover:border-green-500 transition text-gray-400 hover:text-white">
+                  <Upload size={18} className="text-green-400" />
+                  Upload brand logo (PNG with transparency works best)
+                </button>
+              )}
+              <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+              
+              {/* Contact Text removed — now using Text Overlay below */}
+            </div>
+
+            {/* Text Overlay Section */}
+            <div className="mb-6 bg-[#060816] border border-white/10 rounded-2xl p-5">
+              <label className="text-gray-300 font-medium block mb-3">✍️ Add Text on Image (optional)</label>
+              <input type="text" value={overlayText} onChange={(e) => setOverlayText(e.target.value)}
+                placeholder="e.g. Luxury Villas | Call: 628378332 | Pakhowal Road"
+                className="w-full bg-[#101522] border border-white/10 rounded-xl p-3 text-sm outline-none mb-3" />
+              {overlayText && (
+                <>
+                  <label className="text-gray-400 text-sm block mb-2">Font Style</label>
+                  <select value={overlayFont} onChange={(e) => setOverlayFont(e.target.value)}
+                    className="w-full bg-[#101522] border border-white/10 rounded-xl p-3 text-sm mb-3">
+                    <optgroup label="Handwriting">
+                      <option>Dancing Script</option><option>Caveat</option>
+                      <option>Indie Flower</option><option>Kalam</option>
+                      <option>Satisfy</option><option>Pacifico</option>
+                      <option>Sacramento</option><option>Great Vibes</option>
+                      <option>Allura</option><option>Pinyon Script</option>
+                    </optgroup>
+                    <optgroup label="Elegant Script">
+                      <option>Playfair Display</option><option>Cormorant Garamond</option>
+                      <option>Cinzel</option><option>Tangerine</option>
+                      <option>EB Garamond</option><option>Libre Baskerville</option>
+                    </optgroup>
+                    <optgroup label="Bold Modern">
+                      <option>Montserrat</option><option>Oswald</option>
+                      <option>Raleway</option><option>Bebas Neue</option>
+                      <option>Anton</option><option>Black Han Sans</option>
+                    </optgroup>
+                    <optgroup label="Clean Professional">
+                      <option>Roboto</option><option>Open Sans</option>
+                      <option>Lato</option><option>Poppins</option>
+                      <option>Inter</option><option>Nunito</option>
+                    </optgroup>
+                    <optgroup label="Decorative">
+                      <option>Lobster</option><option>Righteous</option>
+                      <option>Permanent Marker</option><option>Amatic SC</option>
+                      <option>Fredoka One</option><option>Alfa Slab One</option>
+                    </optgroup>
+                  </select>
+                  <label className="text-gray-400 text-sm block mb-2">Text Color</label>
+                  <div className="flex gap-2 flex-wrap items-center">
+                    {["#FFFFFF","#000000","#FFD700","#FF6B6B","#4ECDC4","#A855F7","#F97316","#22C55E"].map(c => (
+                      <button key={c} onClick={() => setOverlayColor(c)}
+                        className={`w-8 h-8 rounded-full border-2 transition ${overlayColor === c ? "border-white scale-110" : "border-transparent"}`}
+                        style={{ backgroundColor: c }} />
+                    ))}
+                    <input type="color" value={overlayColor} onChange={(e) => setOverlayColor(e.target.value)}
+                      className="w-8 h-8 rounded-full cursor-pointer" title="Custom color" />
+                  </div>
+                  <p className="text-gray-500 text-xs mt-2">GPT will intelligently place and size the text on the image</p>
+                </>
+              )}
             </div>
 
             <label className="text-gray-300 font-medium">Prompt</label>

@@ -1,5 +1,5 @@
 import Layout from "../layouts/Layout";
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Film, Sparkles, Package, UtensilsCrossed, Home, Smartphone,
@@ -13,6 +13,7 @@ import type { Shot } from "../api/jobs";
 export default function SmartVideo() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const [prompt, setPrompt] = useState("");
   const [videoType, setVideoType] = useState("Advertisement");
@@ -20,6 +21,11 @@ export default function SmartVideo() {
   const [duration, setDuration] = useState("30 Seconds");
   const [referencePreview, setReferencePreview] = useState<string | null>(null);
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [overlayText, setOverlayText] = useState("");
+  const [overlayFont, setOverlayFont] = useState("Dancing Script");
+  const [overlayColor, setOverlayColor] = useState("#FFFFFF");
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -33,12 +39,33 @@ export default function SmartVideo() {
     reader.readAsDataURL(file);
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setLogoPreview(dataUrl);
+      setLogoUrl(dataUrl);
+      localStorage.setItem('smartVideoLogoUrl', dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const [jobId, setJobId] = useState<string | null>(null);
   const [shots, setShots] = useState<Shot[]>([]);
+  const [sceneTexts, setSceneTexts] = useState<string[]>([]);
+  const [sceneFonts, setSceneFonts] = useState<string[]>([]);
+  const [sceneColors, setSceneColors] = useState<string[]>([]);
+  const sceneTextsRef = React.useRef<string[]>([]);
+  const sceneFontsRef = React.useRef<string[]>([]);
+  const sceneColorsRef = React.useRef<string[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [storyboardReady, setStoryboardReady] = useState(false);
   const [imagesReady, setImagesReady] = useState(false);
+  const [overlaysApplied, setOverlaysApplied] = useState(false);
+  const [applyingOverlays, setApplyingOverlays] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
   const [generatingImages, setGeneratingImages] = useState(false);
   const [assemblingVideo, setAssemblingVideo] = useState(false);
@@ -87,6 +114,15 @@ export default function SmartVideo() {
         return;
       }
       setShots(detail.shots);
+      const emptyTexts = new Array(detail.shots.length).fill("");
+      const defaultFonts = new Array(detail.shots.length).fill("Dancing Script");
+      const defaultColors = new Array(detail.shots.length).fill("#FFFFFF");
+      setSceneTexts(emptyTexts);
+      setSceneFonts(defaultFonts);
+      setSceneColors(defaultColors);
+      sceneTextsRef.current = emptyTexts;
+      sceneFontsRef.current = defaultFonts;
+      sceneColorsRef.current = defaultColors;
       setStoryboardReady(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -114,6 +150,51 @@ export default function SmartVideo() {
       setGeneratingImages(false);
     }
   };
+
+  const applyOverlays = async () => {
+    if (!imagesReady || !jobId) return;
+    setError("");
+    setApplyingOverlays(true);
+    const capturedLogoUrl = localStorage.getItem('smartVideoLogoUrl') || logoUrl;
+    try {
+      const updatedShots = await Promise.all(
+        shots.map(async (shot: Shot, i: number) => {
+          const sceneText = sceneTexts[i] || "";
+          const sceneFont = sceneFonts[i] || overlayFont;
+          const sceneColor = sceneColors[i] || overlayColor;
+          const hasLogo = !!capturedLogoUrl;
+          const hasText = !!sceneText;
+          if ((hasLogo || hasText) && shot.frame_url) {
+            try {
+              const res = await api.post("/api/v1/images/overlay", {
+                image_url: shot.frame_url,
+                prompt: shot.description,
+                logo_url: hasLogo ? capturedLogoUrl : undefined,
+                logo_position: "top-right",
+                overlay_text: hasText ? sceneText : undefined,
+                overlay_font: sceneFont,
+                overlay_color: sceneColor,
+              });
+              const brandedUrl = res.data.image_url;
+              await api.patch(`/api/v1/jobs/${jobId}/shots/${shot.idx}/frame?frame_url=${encodeURIComponent(brandedUrl)}`);
+              return { ...shot, frame_url: brandedUrl };
+            } catch (e) {
+              console.warn(`Scene ${i + 1} overlay failed`);
+              return shot;
+            }
+          }
+          return shot;
+        })
+      );
+      setShots(updatedShots);
+      setOverlaysApplied(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Overlay failed.");
+    } finally {
+      setApplyingOverlays(false);
+    }
+  };
+
 
   const assembleVideo = async () => {
     if (!imagesReady || !jobId) return;
@@ -178,6 +259,72 @@ export default function SmartVideo() {
               </div>
             )}
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+
+            {/* Brand Logo Upload */}
+            <label className="font-medium block mb-3 mt-4">Brand Logo (optional — appears on video)</label>
+            {logoPreview ? (
+              <div className="relative w-full h-16 rounded-xl border border-green-500 flex items-center justify-center bg-[#060816] mb-4">
+                <img src={logoPreview} alt="Logo" className="h-full object-contain p-2" />
+                <button onClick={() => { setLogoPreview(null); setLogoUrl(null); }}
+                  className="absolute top-1 right-1 bg-black/70 rounded-full p-1 hover:bg-red-500">
+                  <X size={12} />
+                </button>
+                <div className="absolute bottom-1 left-2 text-xs text-green-400">✓ Logo will appear on video</div>
+              </div>
+            ) : (
+              <div onClick={() => logoInputRef.current?.click()}
+                className="w-full h-14 border-2 border-dashed border-green-500/40 rounded-xl flex items-center justify-center gap-2 hover:border-green-500 transition text-gray-400 hover:text-white cursor-pointer mb-4 text-sm">
+                <Upload size={16} className="text-green-400" />
+                Upload brand logo
+              </div>
+            )}
+            <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+
+            {/* Text Overlay */}
+            <div className="bg-[#060816] border border-white/10 rounded-2xl p-4 mb-4">
+              <label className="font-medium block mb-3">✍️ Text on Video (optional)</label>
+              <input type="text" value={overlayText} onChange={(e) => setOverlayText(e.target.value)}
+                placeholder="e.g. Your tagline | Phone | Address"
+                className="w-full bg-[#101522] border border-white/10 rounded-xl p-3 text-sm outline-none mb-3" />
+              {overlayText && (
+                <>
+                  <select value={overlayFont} onChange={(e) => setOverlayFont(e.target.value)}
+                    className="w-full bg-[#101522] border border-white/10 rounded-xl p-3 text-sm mb-3">
+                    <optgroup label="Handwriting">
+                      <option>Dancing Script</option><option>Caveat</option>
+                      <option>Pacifico</option><option>Satisfy</option>
+                      <option>Great Vibes</option><option>Indie Flower</option>
+                    </optgroup>
+                    <optgroup label="Elegant">
+                      <option>Playfair Display</option><option>Cinzel</option>
+                      <option>Tangerine</option><option>Cormorant Garamond</option>
+                    </optgroup>
+                    <optgroup label="Bold">
+                      <option>Montserrat</option><option>Oswald</option>
+                      <option>Bebas Neue</option><option>Anton</option>
+                      <option>Raleway</option>
+                    </optgroup>
+                    <optgroup label="Professional">
+                      <option>Roboto</option><option>Poppins</option>
+                      <option>Open Sans</option><option>Lato</option>
+                    </optgroup>
+                    <optgroup label="Decorative">
+                      <option>Lobster</option><option>Permanent Marker</option>
+                      <option>Amatic SC</option><option>Fredoka One</option>
+                    </optgroup>
+                  </select>
+                  <div className="flex gap-2 flex-wrap items-center">
+                    {["#FFFFFF","#000000","#FFD700","#FF6B6B","#4ECDC4","#A855F7","#F97316"].map(c => (
+                      <button key={c} onClick={() => setOverlayColor(c)}
+                        className={`w-7 h-7 rounded-full border-2 transition ${overlayColor === c ? "border-white scale-110" : "border-transparent"}`}
+                        style={{ backgroundColor: c }} />
+                    ))}
+                    <input type="color" value={overlayColor} onChange={(e) => setOverlayColor(e.target.value)}
+                      className="w-7 h-7 rounded-full cursor-pointer" />
+                  </div>
+                </>
+              )}
+            </div>
 
             <label className="font-medium">Prompt</label>
             <textarea
@@ -280,6 +427,76 @@ export default function SmartVideo() {
                         <img src={shot.frame_url} alt={`Scene ${i + 1}`}
                           className="mt-3 w-full h-32 object-cover rounded-lg opacity-80" />
                       )}
+                      {/* Per-scene text overlay */}
+                      <div className="mt-3 border-t border-white/5 pt-3">
+                        <input
+                          type="text"
+                          value={sceneTexts[i] || ""}
+                          onChange={async (e) => {
+                            const updated = [...sceneTexts];
+                            updated[i] = e.target.value;
+                            setSceneTexts(updated);
+                            sceneTextsRef.current = updated;
+                            localStorage.setItem('sceneTexts', JSON.stringify(updated));
+                          }}
+                          placeholder={`Text on Scene ${i + 1} (leave empty for no text)`}
+                          className="w-full bg-[#101522] border border-white/10 rounded-lg p-2 text-xs outline-none text-gray-300"
+                        />
+                        {sceneTexts[i] && (
+                          <div className="mt-2 flex gap-2 items-center flex-wrap">
+                            <select
+                              value={sceneFonts[i] || "Dancing Script"}
+                              onChange={(e) => {
+                                const updated = [...sceneFonts];
+                                updated[i] = e.target.value;
+                                setSceneFonts(updated);
+                              }}
+                              className="flex-1 bg-[#101522] border border-white/10 rounded-lg p-2 text-xs outline-none"
+                            >
+                              <option>Dancing Script</option>
+                              <option>Caveat</option>
+                              <option>Pacifico</option>
+                              <option>Satisfy</option>
+                              <option>Great Vibes</option>
+                              <option>Indie Flower</option>
+                              <option>Playfair Display</option>
+                              <option>Cinzel</option>
+                              <option>Tangerine</option>
+                              <option>Montserrat</option>
+                              <option>Oswald</option>
+                              <option>Bebas Neue</option>
+                              <option>Anton</option>
+                              <option>Roboto</option>
+                              <option>Poppins</option>
+                              <option>Lobster</option>
+                              <option>Permanent Marker</option>
+                              <option>Amatic SC</option>
+                            </select>
+                            <div className="flex gap-1">
+                              {["#FFFFFF","#000000","#FFD700","#FF6B6B","#A855F7","#F97316"].map(c => (
+                                <button key={c}
+                                  onClick={() => {
+                                    const updated = [...sceneColors];
+                                    updated[i] = c;
+                                    setSceneColors(updated);
+                                  }}
+                                  className={`w-6 h-6 rounded-full border-2 transition ${(sceneColors[i] || "#FFFFFF") === c ? "border-white scale-110" : "border-transparent"}`}
+                                  style={{ backgroundColor: c }}
+                                />
+                              ))}
+                              <input type="color"
+                                value={sceneColors[i] || "#FFFFFF"}
+                                onChange={(e) => {
+                                  const updated = [...sceneColors];
+                                  updated[i] = e.target.value;
+                                  setSceneColors(updated);
+                                }}
+                                className="w-6 h-6 rounded-full cursor-pointer border-0"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -290,6 +507,14 @@ export default function SmartVideo() {
                     <Image size={16} />
                     {generatingImages ? "Generating..." : imagesReady ? "Images Ready" : "Generate Images"}
                   </button>
+
+                  {imagesReady && (
+                    <button onClick={applyOverlays} disabled={applyingOverlays}
+                      className={`w-full rounded-xl py-3 font-semibold flex items-center justify-center gap-2 transition ${applyingOverlays ? "bg-yellow-700 cursor-not-allowed" : overlaysApplied ? "bg-green-700" : "bg-orange-600 hover:bg-orange-700"}`}>
+                      <Sparkles size={16} />
+                      {applyingOverlays ? "Applying..." : overlaysApplied ? "✓ Text & Logo Applied" : "Apply Text & Logo"}
+                    </button>
+                  )}
 
                   <button onClick={assembleVideo} disabled={!imagesReady || assemblingVideo || videoReady}
                     className="bg-[#060816] border border-white/10 disabled:opacity-40 rounded-xl py-3 font-semibold hover:border-violet-500 flex items-center justify-center gap-2">

@@ -23,6 +23,11 @@ export default function Studio() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [overlayText, setOverlayText] = useState("");
+  const [overlayColor, setOverlayColor] = useState("#FFFFFF");
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [referencePreview, setReferencePreview] = useState<string | null>(null);
 
   const durationToShots: Record<string, number> = {
@@ -54,6 +59,18 @@ export default function Studio() {
       const dataUrl = ev.target?.result as string;
       setReferencePreview(dataUrl);
       setReferenceImage(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setLogoPreview(dataUrl);
+      setLogoUrl(dataUrl);
     };
     reader.readAsDataURL(file);
   };
@@ -95,6 +112,9 @@ export default function Studio() {
         mode: "standard",
         job_type: "studio",
         num_shots,
+        logo_url: logoUrl || undefined,
+        overlay_text: overlayText || undefined,
+        overlay_color: overlayColor || "#FFFFFF",
       });
       navigate(`/quality?job_id=${job.job_id}`);
     } catch (err: unknown) {
@@ -173,6 +193,43 @@ export default function Studio() {
               className="hidden"
               onChange={handleFileUpload}
             />
+
+            {/* Brand Logo */}
+            <h2 className="text-2xl font-semibold mt-6 mb-4">Brand Logo (optional)</h2>
+            {logoPreview ? (
+              <div className="relative w-full h-20 rounded-xl border border-green-500 flex items-center justify-center bg-[#060816]">
+                <img src={logoPreview} alt="Logo" className="h-full object-contain p-2" />
+                <button onClick={() => { setLogoPreview(null); setLogoUrl(null); }}
+                  className="absolute top-2 right-2 bg-black/70 rounded-full p-1 hover:bg-red-500">
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => logoInputRef.current?.click()}
+                className="w-full h-16 border-2 border-dashed border-green-500/40 rounded-xl flex items-center justify-center gap-2 hover:border-green-500 transition text-gray-400 hover:text-white text-sm">
+                <Upload size={16} className="text-green-400" />
+                Upload brand logo (appears on all scenes)
+              </button>
+            )}
+            <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+
+            {/* Text Overlay */}
+            <h2 className="text-2xl font-semibold mt-6 mb-4">Text Overlay (optional)</h2>
+            <input type="text" value={overlayText} onChange={(e) => setOverlayText(e.target.value)}
+              placeholder="e.g. Call: 628378332 | Your tagline"
+              className="w-full bg-[#060816] border border-white/10 rounded-xl p-4 outline-none text-sm mb-3" />
+            {overlayText && (
+              <div className="flex gap-2 flex-wrap items-center">
+                <label className="text-gray-400 text-sm">Color:</label>
+                {["#FFFFFF","#000000","#FFD700","#FF6B6B","#A855F7","#F97316"].map(c => (
+                  <button key={c} onClick={() => setOverlayColor(c)}
+                    className={`w-7 h-7 rounded-full border-2 transition ${overlayColor === c ? "border-white scale-110" : "border-transparent"}`}
+                    style={{ backgroundColor: c }} />
+                ))}
+                <input type="color" value={overlayColor} onChange={(e) => setOverlayColor(e.target.value)}
+                  className="w-7 h-7 rounded-full cursor-pointer" />
+              </div>
+            )}
 
           </div>
 

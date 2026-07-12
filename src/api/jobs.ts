@@ -43,6 +43,9 @@ export interface CreateJobPayload {
   mode: string;
   job_type: string;
   num_shots?: number;
+  logo_url?: string;
+  overlay_text?: string;
+  overlay_color?: string;
 }
 
 export interface CreateJobResponse {
